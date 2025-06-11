@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 def Qtest(n, etat, kmin=2, kmax=4, if0=True) :
     """
@@ -25,18 +26,19 @@ def Qtest(n, etat, kmin=2, kmax=4, if0=True) :
                             N_PPT +=1
                             if KyFan > 1 : 
                                 N_KFP += 1
-                                print(partition, '!!!!!!!!!!', KyFan)
+                                print(f"n={n}, h={h}, partition={partition} !!!!!!!!!! {KyFan}")
                         else : N_NPT +=1
-    print(f'n={n}, h={h}','\nnombre de PPT :', N_PPT, '\nnombre de NPT :', N_NPT,
-          "\nnombre d'états intriqués détectés par CCNR mais pas NPT :", N_KFP)
+    #print(f'n={n}, h={h}','\nnombre de PPT :', N_PPT, '\nnombre de NPT :', N_NPT,
+    #      "\nnombre d'états intriqués détectés par CCNR mais pas NPT :", N_KFP)
 
 start = time.time()
 
-for n in range(7,10) :
+for n in range(2,6) :
     for h in np.logspace(-2,2,5, base=2) :
-        etat_fond = fond_ising(n,h)[1]
+        etats = full_ising(n,h)[1]
         print('trouvé !')
-        Qtest(n,etat_fond,7,n)
+        for etat in etats :
+            Qtest(n,etat,kmax=n)
 
 end=time.time()
 print('\ntemps :', end-start, 'secondes')
