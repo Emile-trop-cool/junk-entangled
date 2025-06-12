@@ -3,9 +3,24 @@ import cvxpy as cp
 import matplotlib.pyplot as plt
 from itertools import combinations
 from icecream import ic
+import pickle
 #from Aureliano_Buendia import *
 #from Hspins import *
 
+def save_obj(obj, filename="data"):
+    try:
+        with open(filename+".pickle", "wb") as f:
+            pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
+    except Exception as ex:
+        print("Error during pickling object (Possibly unsupported):", ex)
+def load_obj(filename="data"):
+    try:
+        with open(filename+".pickle", "rb") as f:
+            return pickle.load(f)
+    except Exception as ex:
+        print("Error during unpickling object (Possibly unsupported):", ex)
+
+###################################################
 def random_polytope(d=1, L=100, n_spin=2):
     """
     Generates a random Bloch polytope of rank-1 projectors (density matrices).
@@ -77,29 +92,43 @@ def test_polytope(rho, d_A, d_B, polytope, num_iter=1, convergence_recognition=T
 
     return t_val, polytope, c+1
 
-def lowerbound(n, rho, precision=4) :
+def lowerbound(n, rho, precision=4) : # valeur de t à laquelle la négativité apparaît
     tlist = np.linspace(0,1,11)
     for j in range(1,precision+1) :
         for t in tlist :
             rhot = t*rho + ((1-t)/2**n)*np.eye(2**n)
             neg = negat(n,rhot,range(int(n/2)))
-            if neg != 0 :break
             tmax = t
+            if neg != 0 :break
         if tmax == 1 : break
         tlist = np.linspace(tmax,tmax+10**(-j),10,False)
     return tmax
 
 ###################################################
-''' états aléatoires
-m=2
-for _ in range(100):
-    rhoasym = np.random.randn(4**m,4**m)
-    rhosym  = (rhoasym+rhoasym.T)/2
-    lb = np.round(lowerbound(2*m, rhosym, 6),6)
-    pt = np.round(test_polytope(rhosym, m, m, random_polytope(2,200),20,convergence_accuracy=1e-6)[0],6)
+#''' états aléatoires
+m=2     # l'état sera une bipartition de m vs m qubits
+dec=8   # nombre de décimales de précision
+taillepoly=100
+niter=20
+
+ic(dec,taillepoly,niter)
+
+for kk in range(100):
+    etatpur  = np.random.randn(16**m) + 1j*np.random.randn(16**m)
+    etatpur /= np.linalg.norm(etatpur)
+    rhored   = trace_lil(4*m, etatpur, range(2*m))
+    lb = np.round(lowerbound(2*m, rhored, dec+1),dec)
+    pt = np.round(test_polytope(rhored, m, m, random_polytope(m,taillepoly),niter,convergence_accuracy=10**(-dec))[0],dec)
+    if np.round(lb-pt,dec-1) != 0 :
+        print('!!!!!!!!!!!!!!!!!!!!!!')
+        save_obj(rhored,f"matrice{kk}")
     print(f"t max pour être PPT : {lb}, t max du polytope : {pt}"
-          +f"\ndifférence (PPT-poly) : {np.round(lb-pt,7)}")
-'''
+          +f"\ndifférence (PPT-poly) : {np.round(lb-pt,dec+1)}")
+
+
+
+
+#'''
 ###################################################
 ''' Horodecki
 def Horo33(a) :
@@ -143,8 +172,16 @@ plt.plot(lista,listchi)
 plt.show()
 '''
 ###################################################
+''' GHZ+W
+GHZ = (base(4,'1111')+base(4,'0000'))/np.sqrt(2)
+W   = (base(4,'0001')+base(4,'1000')+base(4,'0100')+base(4,'0010'))/2
+rho_bench = matdens(W)
+X, poly, cd = test_polytope(rho_bench, dA, dB, random_polytope(dA, 200), niter, True, 1e-6)
+'''
+###################################################
 ''' ising ?
-n, h = 15, 0.5
+n = 15
+h = 0.5
 dA = 1
 dB = 3
 niter = 20
@@ -163,12 +200,13 @@ for comb in Qlist:
 
     print(comb, ' : négativité ', neg, '; visibilité ',
           X, '\n', concorde)
+
 '''
-###################################################
-''' GHZ+W
-GHZ = (base(4,'1111')+base(4,'0000'))/np.sqrt(2)
-W   = (base(4,'0001')+base(4,'1000')+base(4,'0100')+base(4,'0010'))/2
-rho_bench = matdens(W)
-X, poly, cd = test_polytope(rho_bench, dA, dB, random_polytope(dA, 200), niter, True, 1e-6)
-'''
+
+
+
+
+
+
+
 '''the cake is a lie'''
