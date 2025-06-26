@@ -115,10 +115,10 @@ def testa():
 
                     Ntest = permute_rho_by_qubit_order(test,ordre)
                     #print(Ntest)
-                    pol1 = RandomBlochPolytope(2,200)
+                    #pol1 = RandomBlochPolytope(2,200)
                     #print(pol1)
-                    le1v3 = RobustnessToSeparabilityByBlochPolytope(Ntest,pol1,paires=[[j],indicess],num_iter=30)
-                    print(le1v3[0],'\n')
+                    #le1v3 = RobustnessToSeparabilityByBlochPolytope(Ntest,pol1,paires=[[j],indicess],num_iter=30)
+                    #print(le1v3[0],'\n')
 
 
                     #print(comb[j],comb,'\n')
@@ -137,13 +137,13 @@ def testa():
                     print(soussys,comb)
                     combi = [comb[i] for i in jj]
                     indicess2 = indices_dans_liste(comb,[i for i in comb if i not in combi])
-                    ordre2 =  jj+ indicess2
+                    ordre2 =  list(jj)+ list(indicess2)
                     Ntest2 = permute_rho_by_qubit_order(test,ordre2)
 
-                    polypoly = RandomBlochPolytope(4,300)
-                    le2vs2 = RobustnessToSeparabilityByBlochPolytope(Ntest2,polypoly,paires=[jj,indicess2],num_iter=30
-                                                                     ,convergence_accuracy= 1e-04)
-                    print(le2vs2[1],'\n')
+                    #polypoly = RandomBlochPolytope(4,300)
+                    #le2vs2 = RobustnessToSeparabilityByBlochPolytope(Ntest2,polypoly,paires=[jj,indicess2],num_iter=30
+                    #                                                 ,convergence_accuracy= 1e-04)
+                    #print(le2vs2[1],'\n')
 
                     if KF2 >=1 :
                         CcNr +=1

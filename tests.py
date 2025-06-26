@@ -1,4 +1,3 @@
-from fonctions import *
 from travail import *
 from Ising import *
 
