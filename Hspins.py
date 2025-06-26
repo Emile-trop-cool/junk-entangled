@@ -3,9 +3,9 @@
 
 import numpy as np
 import scipy.sparse as scp
-# from Aureliano_Buendia import *
+#from Aureliano_Buendia import *
 
-# fonctions de base :
+#%% # fonctions de base :
 def sigma(n=1, i_list=[0], xyz='z', cste=1) :
     """
     Opérateur spin dans une direction cardinale pour un spin dans une chaîne
@@ -73,11 +73,11 @@ def fond_ising(n, h) :
     return vp[0], vp[1][:,0]
 
 #################################################
-# fonctions extra :
+#%% # fonctions extra :
 
 def full_ising(n, h) :
     """
-    calcule tous sasuf l'état fondamental
+    calcule tous sauf l'état fondamental
 
     Paramètres
     ----------
@@ -103,13 +103,13 @@ def full_ising(n, h) :
     
     return vp[0], groundstates
 
-def fond_varXYZ(n, h, hx, hy, hz) :
+def fond_varXYZ(n, hx, hz, hxx, hyy, hzz) :
     """
-    état fondamental de H = sum(hx*XX + hy*YY + hz*ZZ + h*Z)
+    état fondamental de H = sum(hxx*XX + hyy*YY + hzz*ZZ + hx*X + hz*Z)
     
     Retourne
     -------
-    float, ndarray (énergie propre et matrice de densité de l'état).
+    float, ndarray (énergie propre et vecteur propre de l'état).
     
     """
     H = scp.csr_matrix((2**n,2**n)) # hamiltonien initialisé
@@ -117,13 +117,53 @@ def fond_varXYZ(n, h, hx, hy, hz) :
     # Terme d'interaction xx, yy, zz et Zeeman en z :
     for i in range(n) :
         if i != (n-1) : 
-            H += sigma(n,[i,i+1],'xx',-hx)+sigma(n,[i,i+1],'yy',-hy)+sigma(n,[i,i+1],'zz',-hz)
-        H += sigma(n,[i],'z',-h)
-    H += sigma(n,[0,n-1],'xx',-hx)+sigma(n,[0,n-1],'yy',-hy)+sigma(n,[0,n-1],'zz',-hz)
+            H += sigma(n,[i,i+1],'xx',-hxx)+sigma(n,[i,i+1],'yy',-hyy)+sigma(n,[i,i+1],'zz',-hzz)
+        H += sigma(n,[i],'z',-hz) + sigma(n,[i],'x',-hx)
+    H += sigma(n,[0,n-1],'xx',-hxx)+sigma(n,[0,n-1],'yy',-hyy)+sigma(n,[0,n-1],'zz',-hzz)
     vp = scp.linalg.eigsh(H, 1, which='SA')
-    print(H.toarray())
+    #print(H.toarray())
     return vp[0], vp[1][:,0]
 
-n,h,hx,hy,hz = 2,1,100,0.01,10000
+def full_low_varXYZ(n, k, hx, hz, hxx, hyy, hzz) :
+    """
+    les k états de plus basse énergie de H = sum(hxx*XX + hyy*YY + hzz*ZZ + hx*X + hz*Z)
+    
+    Retourne
+    -------
+    liste de float, liste de ndarray (énergies propres et vecteurs propres des états).
+    
+    """
+    H = scp.csr_matrix((2**n,2**n)) # hamiltonien initialisé
+    
+    # Terme d'interaction xx, yy, zz et Zeeman en z :
+    for i in range(n) :
+        if i != (n-1) : 
+            H += sigma(n,[i,i+1],'xx',-hxx)+sigma(n,[i,i+1],'yy',-hyy)+sigma(n,[i,i+1],'zz',-hzz)
+        H += sigma(n,[i],'z',-hz) + sigma(n,[i],'x',-hx)
+    H += sigma(n,[0,n-1],'xx',-hxx)+sigma(n,[0,n-1],'yy',-hyy)+sigma(n,[0,n-1],'zz',-hzz)
+    
+    vp = scp.linalg.eigsh(H, k, which='SA')
+    groundstates = [np.round(vp[1][:,i],15) for i in range(len(vp[0]))]
+    
+    return vp[0], groundstates
 
-fond_varXYZ(n, h, hx, hy, hz)
+def full_low_XX(n, k, Jx, Jy, h) :
+    """
+    les k états de plus basse énergie du modèle XX
+    
+    Retourne
+    -------
+    liste de float, liste de ndarray (énergies propres et vecteurs propres des états).
+    
+    """
+    return full_low_varXYZ(n, k, 0, h/2, Jx/4, Jy/4, 0)
+
+#%% test 1212
+
+jx= 0.5
+py= 1
+h = 1
+
+val = full_low_XX(12, 1, jx, py*jx, h)
+#val /= -val[0]
+#plt.plot(range(20),val)
