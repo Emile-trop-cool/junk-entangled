@@ -2,35 +2,19 @@ import cvxpy as cpy
 import numpy as np
 import mosek
 from fonctions import *
-from Ising import *
-
-'''n=3
-p=3
-np.random.seed(1)
-C = np.random.randn(n,n)
-A = []
-b = []
-for i in range(p):
-    A.append(np.random.randn(n,n))
-    b.append(np.random.randn())
-
-X = cpy.Variable((n,n),symmetric=True)
-constraints = [ X >> 0 ]
-constraints += [
-    cpy.trace(A[i] @ X) == b[i] for i in range(p)
-]
-prob = cpy.Problem(cpy.Minimize(cpy.trace(C @ X)), constraints)
-prob.solve()'''
-#print(prob.value)
-#print(X.value)
+import pickle
 
 
-#travail avec les polytope
-# voir comment initialiser les polytope intérieur de Alice
-# faire le sdp pour calculer le Ksi en maximisant t pour trouver le tau
-# avec celui-ci construire le polytope de B
-# A devient B et vice-versa et on recommence de faire le sdp
-# lors que ksi ne change que d'une petite valeur, on arrête le code.
+
+
+def permuto_AB(rho, dA,dB):
+    n = dA+dB
+    perm = np.arange(2*n)
+    for p in range(min(dA,dB)):
+        perm[p], perm[dA+p] = perm[dA+p], perm[p]
+        perm[n+p], perm[n+dA+p] = perm[n+dA+p], perm[n+p]
+    return rho.reshape([2]*(2*n)).transpose(perm).reshape((2**n,2**n))
+
 
 def RandomBlochPolytope(d: int = 2, L: int= 100):
 
@@ -50,7 +34,6 @@ def FirstRobustnessToSeparabilityBlochPolytope(rho,paires, QPolytope, solver=cpy
     #variable de CVXPY
     t = cpy.Variable(nonneg=True)
     X = [cpy.Variable((dimB,dimB),hermitian=True) for _ in range(N)]
-
     # construit la somme entre polytope et X
     kron_blocks = []
     for k in range(N):
@@ -59,7 +42,6 @@ def FirstRobustnessToSeparabilityBlochPolytope(rho,paires, QPolytope, solver=cpy
 
     S_expr = sum(kron_blocks)
     I_dim = np.eye(rho.shape[0])
-
     #construire les constraintes
     constraints = []
     for k in range(N):
@@ -73,10 +55,11 @@ def FirstRobustnessToSeparabilityBlochPolytope(rho,paires, QPolytope, solver=cpy
     prob.solve(solver=solver, verbose=not silent)
 
     x=prob.value
-
+    #print(prob.status)
     Z=[]
     for k in range(N):
         Xk_val = X[k].value
+        #print(Xk_val)
         trX = np.real(np.trace(Xk_val))
         if trX < 1e-3:
             Zk = RandomBlochPolytope(dimB,1)[0]
@@ -92,8 +75,9 @@ def FirstRobustnessToSeparabilityBlochPolytope(rho,paires, QPolytope, solver=cpy
 def PolytopeOptimizationForWhiteRobustness(rho,paires, G, solver= cpy.MOSEK, silent: bool = True):
     dimA, dimB = 2**int(len(paires[0])), 2**int(len(paires[1]))
     dim = dimA*dimB
+    #print(rho.shape)#   NE PAS ENLEVER SINON BUG
     N = len(G) #G est le Z
-    rho_perm = perm(rho,4,paires=paires)
+    rho_perm = permuto_AB(rho,int(len(paires[0])),int(len(paires[1])))
 
     #variable CVXPY
     t = cpy.Variable(nonneg=True)
@@ -115,7 +99,7 @@ def PolytopeOptimizationForWhiteRobustness(rho,paires, G, solver= cpy.MOSEK, sil
     left_expr = t*rho_perm + ((1-t)/dim) *I_dim
     constraints.append(left_expr == S_expr)
 
-    prob = cpy.Problem(cpy.Maximise(t), constraints)
+    prob = cpy.Problem(cpy.Maximize(t), constraints)
     prob.solve(solver=solver, verbose = not silent)
 
     x = prob.value
@@ -161,19 +145,35 @@ def RobustnessToSeparabilityByBlochPolytope(
     while c<num_iter:
         U_x, Z = FirstRobustnessToSeparabilityBlochPolytope(rho,paires,QPolytope,solver,silent)
         if c > 0 and convergence_recognition:
-            if abs(U_x-x <= convergence_accuracy):
+            if abs(U_x-x) <= convergence_accuracy:
                 break
+
+
         x = U_x
+        print(x)
+        if x>= 0.9:
+            print("Valeur de x trop grande pour être intéressante, passe au suivant")
+            return x, Z, QPolytope, ResPolytope, d
+
         if num_iter > 1 and c < (num_iter-1):
+
+
             QPolytope,ResPolytope = PolytopeOptimizationForWhiteRobustness(rho,paires, Z, solver, silent)
         d+=1
         c+=1
 
+    #print(f'la meilleur valeur de t est {x} après {d} itérations')
     return x,Z,QPolytope,ResPolytope,d
 
 
 
-polytechniquemontreal = RandomBlochPolytope(2) # le polytope créer doit avoir le même nombre d'état que dA
-testis = RobustnessToSeparabilityByBlochPolytope(test012,polytechniquemontreal,[[0],[1,2,3]]) #inclure truc pour les paires
+#polytechniquemontreal = RandomBlochPolytope(4) # le polytope créer doit avoir le même nombre d'état que dA
+#testis = RobustnessToSeparabilityByBlochPolytope(test012,polytechniquemontreal,[[0,1],[2,3]],20)
 
-#la fonctionne est bonne pour des 2vs2, mais voir pour des 1vs3
+#GHZ = (psi(4,'0000') + psi(4,'1111'))/np.sqrt(2)
+#W = (psi(4,'0001') + psi(4,'0010')+psi(4,'0100')+psi(4,'1000'))/2
+
+
+#état = dens(GHZ).toarray()
+#teslaints = RobustnessToSeparabilityByBlochPolytope(état,polytechniquemontreal,[[0,1],[2,3]],20,convergence_accuracy=1e-5)
+

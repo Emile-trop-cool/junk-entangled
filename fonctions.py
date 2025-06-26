@@ -78,10 +78,8 @@ def nPartielT(rho, Qubits=[1]):
     perm = np.arange(2 * nQbit)
     for s in Qubits:
         perm[s], perm[(s + int(nQbit))] = perm[(s + int(nQbit))], perm[s]
-    return rho.reshape(np.full(2 * nQbit, 2)).transpose(perm).reshape(2 ** nQbit, 2 ** nQbit)
+    return rho.reshape([2] * (nQbit*2)).transpose(perm).reshape(2 ** nQbit, 2 ** nQbit)
 
-def nPartielT3(rho,n,Qubits=[0]):
-    pass
 
 def PPT(rho):
     """
@@ -103,7 +101,7 @@ def PPT(rho):
 
 
 def TracePart(rho, Qbit=[1]):
-    Qbit = np.array(Qbit) - 1
+    Qbit = np.array(Qbit)
     dim = rho.shape[0]
     nQbit = int(np.log2(dim))
 
@@ -148,9 +146,11 @@ def mat_red(psi, GQbits):
 
     dim_tenseur = [2] * nQbit
     traces = [i for i in range(nQbit) if i not in GQbits]
+    psi2 = psi.conj().T
     psi = psi.reshape(dim_tenseur)
+    psi2 = psi2.reshape(dim_tenseur)
 
-    rho_red = np.tensordot(psi, psi.T, axes=(traces, traces))
+    rho_red = np.tensordot(psi, psi2, axes=(traces, traces))
 
     taille = 2 ** len(GQbits)
 
@@ -181,7 +181,7 @@ def ccnr2(mat,n, part):
         for pp in part:
             pp = np.sort(pp)
         pflat = np.sort(list(part[0])+list(part[1]))
-        indf = np.array([np.where(pflat == p)[0][0] for p in part[0]])
+        indf = np.array([np.where(pflat == p)[0][0] for p in part[p0]])
         paires = []
         dist = 0
 
@@ -202,7 +202,24 @@ def perm(mat,n,paires=[[0,1]]):
     return mat.reshape([2]*(2*n)).transpose(permu).reshape((2**n,2**n))
 
 
+def permute_rho_by_qubit_order(rho, order: list):
+    """
+    Permute les qubits de la matrice rho selon un nouvel ordre donné.
+    `order` est une permutation des indices [0, 1, ..., n-1]
+    """
+    n = int(np.log2(rho.shape[0]))
+    assert rho.shape == (2**n, 2**n), "rho must be 2^n x 2^n"
+    assert sorted(order) == list(range(n)), "order must be a permutation of qubit indices"
 
+    # Construire la permutation sur les indices du tenseur (ket puis bra)
+    perm = order + [i + n for i in order]
+
+    rho_tensor = rho.reshape([2] * (2 * n))
+    rho_perm = rho_tensor.transpose(perm).reshape((2**n, 2**n))
+    return rho_perm
+
+def indices_dans_liste(liste, sous_liste):
+    return [i for i, val in enumerate(liste) if val in sous_liste]
 
 
 # Benchmarking------------------------
